@@ -1,8 +1,10 @@
 from flask import Flask, send_file, request, jsonify
 import exportar_relatorio  # Importe seu script Python (ajuste se o nome for diferente)
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, origins=["https://controle-abstecao-vh123.netlify.app"])
 
 @app.route('/exportar_relatorio', methods=['GET'])
 def exportar_relatorio_endpoint():
