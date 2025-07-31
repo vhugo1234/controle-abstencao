@@ -710,20 +710,15 @@ document.getElementById("salvarBtn").onclick = function() {
   salvarEscolaFiltradaNoFirebase();
 };
 document.getElementById("exportBtn").onclick = function() {
-  // Sincronize os inputs locais, se necessário
   sincronizarDadosComInputs();
-
-  // Pegue os filtros do formulário
   const evento = document.getElementById("filtroEvento").value;
   const turno = document.getElementById("filtroTurno").value;
   const escola = document.getElementById("filtroEscola").value;
-  const formato = "xlsx"; // Ou "pdf" para exportar PDF
-
-  // Monta a URL do endpoint Flask
-  const url = `/exportar_relatorio?evento=${encodeURIComponent(evento)}&turno=${encodeURIComponent(turno)}&escola=${encodeURIComponent(escola)}&formato=${formato}`;
-
-  // Abre a URL para baixar o arquivo gerado no servidor
-  window.open(url);
+  const formato = "xlsx";
+  // Para teste, tente primeiro só o formato:
+  // const url = `/exportar_relatorio?formato=${formato}`;
+ const url = `https://controle-abstencao.onrender.com/exportar_relatorio?evento=${encodeURIComponent(evento)}&turno=${encodeURIComponent(turno)}&escola=${encodeURIComponent(escola)}&formato=${formato}`;
+ window.location.href = url;
 };
 document.getElementById("limparBtn").onclick = limparFirebase;
 document.getElementById("salvarTodasBtn").onclick = function() {
