@@ -27,5 +27,5 @@ def index():
     return 'API de Exportação de Relatórios - Use /exportar_relatorio'
 
 if __name__ == '__main__':
-    # Rode em modo de produção para múltiplos usuários (ex: Gunicorn)
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
