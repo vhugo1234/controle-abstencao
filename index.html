@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controle de Abstenção</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Controle de Abstenção</h1>
+    <div id="loginStatus"></div>
+    <div id="loginForm" class="card">
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="senha" placeholder="Senha" required>
+      <button id="loginBtn">Entrar</button>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+    </div>
+    <!-- Campo de importação com controle por ID -->
+    <div class="buttons" id="importCsvBtnBox">
+      <label for="csvFile" class="btn-file">
+        Importar CSV
+        <input type="file" id="csvFile" accept=".csv" style="display:none;">
+      </label>
+      <label for="motivosCsvFile" class="btn-file">
+        Importar Motivos
+        <input type="file" id="motivosCsvFile" accept=".csv" style="display:none;">
+      </label>
+    </div>
+    <div class="buttons" id="actionButtons" style="display:none;">
+      <button id="salvarBtn" disabled>Salvar na Nuvem</button>
+      <button id="salvarTodasBtn">Salvar TODAS na Nuvem (Admin)</button>
+      <button id="exportBtn">Exportar XLSX</button>
+      <button id="limparBtn">Limpar (Admin)</button>
+    </div>
+    <!-- Filtros padronizados -->
+    <div class="filtro">
+      <label for="filtroEvento" id="labelEvento">Filtrar por Evento:</label>
+      <select id="filtroEvento"></select>
+    </div>
+    <div class="filtro">
+      <label for="filtroTurno" id="labelTurno" style="display:none;">Filtrar por Turno:</label>
+      <select id="filtroTurno" style="display:none;"></select>
+    </div>
+    <div class="filtro">
+      <label for="filtroEscola" id="labelEscola" style="display:none;">Filtrar por Escola:</label>
+      <select id="filtroEscola" style="display:none;"></select>
+    </div>
+    <div id="feedback" role="alert" aria-live="polite"></div>
+    <div id="eventos" style="display:none;"></div>
+    <div id="totais" class="card" style="display:none;"></div>
+    <div id="historico"></div>
+  </div>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

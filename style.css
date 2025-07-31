@@ -1,0 +1,412 @@
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  margin: 0;
+  padding: 2rem;
+  background: linear-gradient(120deg, #e3f0ff 0%, #ffffff 100%);
+}
+
+h1 {
+  text-align: center;
+  color: #1976d2;
+  margin-bottom: 2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 6px rgba(60,60,120,0.06);
+}
+
+h2 {
+  color: #1976d2;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 18px rgba(60, 60, 120, 0.11);
+}
+
+.escola-card {
+  background: linear-gradient(110deg, #e3f0ff 70%, #f1f8e9 100%);
+  border: 1px solid #c5e1a5;
+}
+
+#loginForm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(110deg, #e3f0ff 60%, #fafafa 100%);
+  border: 1px solid #bbdefb;
+}
+
+#loginStatus {
+  text-align: center;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  padding: 0.3rem 0;
+}
+
+input[type="email"], input[type="password"] {
+  width: 220px;
+  font-size: 1rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #1976d2;
+  border-radius: 5px;
+  background: #f5f5f5;
+  color: #1976d2;
+  margin-bottom: 0.3rem;
+  transition: border 0.2s;
+}
+input:focus {
+  border-color: #388e3c;
+  outline: none;
+}
+
+input[type="file"] {
+  font-size: 1rem;
+}
+
+input[type="number"] {
+  width: 70px;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 5px;
+  border: 1px solid #c5cae9;
+  background: #f5f5f5;
+}
+
+.buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Centraliza o botão Importar CSV */
+#importCsvBtnBox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 0.7rem;
+}
+
+button {
+  padding: 0.6rem 1.4rem;
+  font-size: 1.07rem;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 5px rgba(60, 60, 120, 0.07);
+  transition: background 0.22s, color 0.22s;
+}
+
+/* Botões específicos */
+#loginBtn {
+  background: #1976d2;
+  color: #fff;
+}
+
+#logoutBtn {
+  background: #757575;
+  color: #fff;
+}
+
+#salvarBtn {
+  background: #43a047;
+  color: #fff;
+}
+#salvarBtn:disabled {
+  background: #bdbdbd;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+#limparBtn {
+  background: #e53935;
+  color: #fff;
+}
+#limparBtn:hover {
+  background: #b71c1c;
+}
+
+#exportBtn {
+  background: #00bcd4;
+  color: #fff;
+}
+#exportBtn:hover {
+  background: #00838f;
+}
+
+button:hover:enabled {
+  filter: brightness(1.12);
+  opacity: 0.96;
+}
+
+/* Feedback bonito */
+#feedback {
+  text-align: center;
+  margin: 1rem 0;
+  color: #fff;
+  background: #1976d2;
+  border-radius: 6px;
+  padding: 0.7rem 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  box-shadow: 0 2px 12px rgba(25,118,210,0.07);
+}
+
+/* Tabela estilizada */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+
+th, td {
+  border: 1px solid #e0e0e0;
+  padding: 0.6rem;
+  text-align: center;
+  font-size: 1rem;
+}
+
+th {
+  background: #bbdefb;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+tr:nth-child(even) td {
+  background: #f1f8e9;
+}
+
+tr:hover td {
+  background: #e3f0ff;
+}
+
+#totais.card {
+  margin-top: 2rem;
+  border: 2px solid #1976d2;
+  box-shadow: 0 2px 16px rgba(25, 118, 210, 0.08);
+}
+
+#totais h2 {
+  color: #43a047;
+  text-align: left;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  font-size: 1.13rem;
+}
+
+#totais b {
+  font-weight: bold;
+  display: inline-block;
+  min-width: 150px;
+  color: #1976d2;
+}
+
+/* PADRONIZAÇÃO DOS FILTROS */
+.filtro {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  max-width: 300px;
+}
+
+.filtro label {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #388e3c;
+}
+
+.filtro select {
+  padding: 0.4rem 0.8rem;
+  font-size: 1.05rem;
+  border-radius: 6px;
+  border: 1px solid #1976d2;
+  background: #f5f5f5;
+  color: #1976d2;
+  transition: border 0.2s;
+  margin-bottom: 0.3rem;
+}
+
+.filtro select:focus {
+  border-color: #388e3c;
+  outline: none;
+}
+
+/* Cards por escola responsivos */
+@media (max-width: 600px) {
+  .container { padding: 0.2rem; }
+  table, th, td { font-size: 0.9rem; }
+  .buttons {
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+  #importCsvBtnBox {
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0.7rem;
+    width: 100%;
+    display: flex;
+  }
+  .btn-file {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    display: flex;
+  }
+  .filtro select {
+    font-size: 0.98rem;
+    width: 100%;
+  }
+  input[type="email"], input[type="password"] {
+    width: 100%;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: #e3f0ff;
+}
+::-webkit-scrollbar-thumb {
+  background: #1976d2;
+  border-radius: 10px;
+}
+
+/* Estilo do botão importar CSV */
+.btn-file {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.6rem 1.4rem;
+  font-size: 1.07rem;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  background: #1976d2;
+  color: #fff;
+  box-shadow: 0 1px 5px rgba(60, 60, 120, 0.07);
+  transition: background 0.22s, color 0.22s;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 250px;
+  text-align: center;
+}
+.btn-file input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.btn-file:hover {
+  filter: brightness(1.12);
+  opacity: 0.96;
+  background: #388e3c;
+}
+
+.sala-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(25,118,210,0.07);
+  margin-bottom: 1.3rem;
+  padding: 1.3rem 1.5rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  transition: box-shadow 0.2s;
+}
+.sala-evento {
+  font-size: 1.18rem;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 0.3rem;
+  word-break: break-word;
+}
+.sala-info {
+  font-size: 1rem;
+  color: #1976d2;
+  margin-bottom: 0.25rem;
+  word-break: break-word;
+}
+.sala-nome {
+  font-size: 1.11rem;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  color: #388e3c;
+}
+.sala-campos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem 2.5rem;
+  margin-bottom: 0.7rem;
+}
+.sala-campo {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.1rem;
+}
+.sala-campo label {
+  font-weight: 700;
+  min-width: 90px;
+}
+.sala-campo input[type="number"] {
+  width: 70px;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 5px;
+  border: 1px solid #c5cae9;
+  background: #f5f5f5;
+}
+.sala-detalhes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.7rem;
+}
+.sala-detalhes input[type="text"] {
+  width: 170px;
+  font-size: 1rem;
+  margin-right: 0.2rem;
+}
+.sala-detalhes button {
+  background: #1976d2;
+  color: #fff;
+  border-radius: 6px;
+  border: none;
+  padding: 0.35rem 1rem;
+  font-size: 0.97rem;
+  cursor: pointer;
+  margin-right: 1rem;
+  transition: background 0.18s;
+}
+.sala-detalhes button:hover {
+  background: #1565c0;
+}
+@media (max-width: 600px) {
+  .sala-card { padding: 0.6rem; }
+  .sala-campos-grid { grid-template-columns: 1fr; gap: 0.7rem 0; }
+  .sala-detalhes input[type="text"] { width: 100%; }
+}
