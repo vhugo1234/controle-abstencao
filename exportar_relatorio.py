@@ -1,26 +1,29 @@
 import firebase_admin
-from firebase_admin import credentials, db
+from firebase_admin import credentials, db, initialize_app
 import pandas as pd
 from fpdf import FPDF
 import os
 import json
+import glob
+
 
 # Configuração do Firebase
 
 cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if cred_json is None:
-    # Local: usar arquivo JSON
-    with open("abstencao-d812a-firebase-adminsdk-fbsvc-738d3becdd.json", "r") as f:
+    cred_files = glob.glob("abstencao-d812a-firebase-adminsdk-*.json")
+    if not cred_files:
+        raise Exception("Arquivo de credencial do Firebase não encontrado!")
+    cred_file = cred_files[0]
+    with open(cred_file, "r") as f:
         cred_dict = json.load(f)
 else:
-    # Render: usar variável de ambiente
     cred_dict = json.loads(cred_json)
 
 cred = credentials.Certificate(cred_dict)
 
-
-firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://abstencao-d812a-default-rtdb.firebaseio.com/'
+initialize_app(cred, {
+    "databaseURL": "https://abstencao-d812a-default-rtdb.firebaseio.com/"
 })
 
 # Filtros (altere conforme desejado)
