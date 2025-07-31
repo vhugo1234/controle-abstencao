@@ -2,9 +2,16 @@ import firebase_admin
 from firebase_admin import credentials, db
 import pandas as pd
 from fpdf import FPDF
+import os
+import json
 
 # Configuração do Firebase
-cred = credentials.Certificate('abstencao-d812a-firebase-adminsdk-fbsvc-738d3becdd.json')
+cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+if cred_json is None:
+    raise Exception("Variável de ambiente GOOGLE_APPLICATION_CREDENTIALS_JSON não encontrada!")
+
+cred_dict = json.loads(cred_json)
+cred = credentials.Certificate(cred_dict)
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://abstencao-d812a-default-rtdb.firebaseio.com/'
 })
