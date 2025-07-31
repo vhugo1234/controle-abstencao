@@ -6,12 +6,19 @@ import os
 import json
 
 # Configuração do Firebase
+
 cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if cred_json is None:
-    raise Exception("Variável de ambiente GOOGLE_APPLICATION_CREDENTIALS_JSON não encontrada!")
+    # Local: usar arquivo JSON
+    with open("abstencao-d812a-firebase-adminsdk-fbsvc.json", "r") as f:
+        cred_dict = json.load(f)
+else:
+    # Render: usar variável de ambiente
+    cred_dict = json.loads(cred_json)
 
-cred_dict = json.loads(cred_json)
 cred = credentials.Certificate(cred_dict)
+
+
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://abstencao-d812a-default-rtdb.firebaseio.com/'
 })
@@ -29,6 +36,7 @@ def coletar_dados_firebase():
     # Altere a referência conforme seu BD
     ref = db.reference('relatorio_por_evento')
     dados_firebase = ref.get() or {}
+    print("DEBUG - dados_firebase:", dados_firebase)
 
     # Transforma o Firebase em dados de sala
     dados = []
