@@ -10,7 +10,7 @@ import json
 cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if cred_json is None:
     # Local: usar arquivo JSON
-    with open("abstencao-d812a-firebase-adminsdk-fbsvc.json", "r") as f:
+    with open("abstencao-d812a-firebase-adminsdk-fbsvc-738d3becdd.json", "r") as f:
         cred_dict = json.load(f)
 else:
     # Render: usar variável de ambiente
