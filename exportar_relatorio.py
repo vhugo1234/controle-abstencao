@@ -31,16 +31,19 @@ turnoFiltro = ""   # Exemplo: "Manhã"
 escolaFiltro = ""  # Exemplo: "Escola Y"
 
 def ordenarSalasTurno(salas):
-    # Ordena por sala (modifique se quiser outra ordenação)
-    return sorted(salas, key=lambda x: x.get("sala", ""))
+    # Ordena salas numericamente pelo número
+    def sala_num(sala):
+        s = str(sala.get("sala", ""))
+        nums = ''.join([c for c in s if c.isdigit()])
+        return int(nums) if nums else 0
+    # Se quiser ordem alfabética secundária, pode adicionar s como segundo critério
+    return sorted(salas, key=lambda sala: (sala_num(sala), str(sala.get("sala", ""))))
 
 def coletar_dados_firebase():
-    # Altere a referência conforme seu BD
     ref = db.reference('relatorio_por_evento')
     dados_firebase = ref.get() or {}
     print("DEBUG - dados_firebase:", dados_firebase)
 
-    # Transforma o Firebase em dados de sala
     dados = []
     for evento, evento_data in dados_firebase.items():
         turnos = evento_data.get('turnos', {})
@@ -65,7 +68,6 @@ def coletar_dados_firebase():
     return dados
 
 def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
-    # Filtra as salas conforme os filtros
     exportarSalas = [
         sala for sala in dados
         if (eventoFiltro == "" or sala.get("evento") == eventoFiltro)
@@ -91,8 +93,8 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
         totalGeral["desistentes"] += int(sala.get("desistentes", 0))
         totalGeral["eliminados"] += int(sala.get("eliminados", 0))
 
-    # Agrupa por evento + escola e insere totais conforme modelo JS
-    for (evento_nome, escola_nome), salas in escolas.items():
+    # Ordena blocos por evento e escola
+    for (evento_nome, escola_nome), salas in sorted(escolas.items(), key=lambda x: (x[0][0], x[0][1])):
         escTotal = escAusentes = escPresentes = escDesistentes = escEliminados = 0
         salasOrdenadas = ordenarSalasTurno(salas)
         for sala in salasOrdenadas:
@@ -105,7 +107,7 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
                 desist = (sala.get("desistentesDetalhes") or [{}])[i] if i < len(sala.get("desistentesDetalhes", [])) else {}
                 elim = (sala.get("eliminadosDetalhes") or [{}])[i] if i < len(sala.get("eliminadosDetalhes", [])) else {}
                 abstSala = (
-                    f"{((sala.get('ausentes', 0) / sala.get('total', 1)) * 100):.2f}".replace(".", ",") + "%" 
+                    f"{((sala.get('ausentes', 0) / sala.get('total', 1)) * 100):.2f}".replace(".", ",") + "%"
                     if sala.get("total", 0) else "0,00%"
                 )
                 sheetData.append([
