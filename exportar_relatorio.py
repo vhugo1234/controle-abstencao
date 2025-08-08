@@ -6,7 +6,6 @@ import os
 import json
 import glob
 
-
 # Configuração do Firebase
 
 cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
@@ -80,18 +79,20 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
          "Eliminados", "Inscrição_Eliminado", "Motivo_Eliminado", "% Abstenção"]
     ]
 
+    # AGRUPAR POR EVENTO + ESCOLA
     escolas = {}
     totalGeral = dict(total=0, ausentes=0, presentes=0, desistentes=0, eliminados=0)
     for sala in exportarSalas:
-        escolas.setdefault(sala["escola"], []).append(sala)
+        key = (sala["evento"], sala["escola"])
+        escolas.setdefault(key, []).append(sala)
         totalGeral["total"] += int(sala.get("total", 0))
         totalGeral["ausentes"] += int(sala.get("ausentes", 0))
         totalGeral["presentes"] += int(sala.get("presentes", 0))
         totalGeral["desistentes"] += int(sala.get("desistentes", 0))
         totalGeral["eliminados"] += int(sala.get("eliminados", 0))
 
-    # Agrupa por escola e insere totais conforme modelo JS
-    for escolaNome, salas in escolas.items():
+    # Agrupa por evento + escola e insere totais conforme modelo JS
+    for (evento_nome, escola_nome), salas in escolas.items():
         escTotal = escAusentes = escPresentes = escDesistentes = escEliminados = 0
         salasOrdenadas = ordenarSalasTurno(salas)
         for sala in salasOrdenadas:
@@ -117,10 +118,10 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
                     sala.get("presentes"),
                     1 if sala.get("desistentes", 0) > i else "",
                     desist.get("inscricao", ""),
-                    desist.get("motivo", ""),
+                    desist.get("motivo", "") or desist.get("descricao", ""),
                     1 if sala.get("eliminados", 0) > i else "",
                     elim.get("inscricao", ""),
-                    elim.get("motivo", ""),
+                    elim.get("motivo", "") or elim.get("descricao", ""),
                     abstSala
                 ])
             escTotal += int(sala.get("total", 0))
@@ -131,9 +132,9 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
 
         percAbst = f"{((escAusentes / escTotal) * 100):.2f}".replace(".", ",") + "%" if escTotal else "0,00%"
         sheetData.append([
-            "TOTAL ESCOLA",
+            f"TOTAL ESCOLA ({evento_nome})",
             "",
-            escolaNome,
+            escola_nome,
             "",
             escTotal,
             escAusentes,
