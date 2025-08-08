@@ -5,9 +5,9 @@ from fpdf import FPDF
 import os
 import json
 import glob
+import re
 
 # Configuração do Firebase
-
 cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if cred_json is None:
     cred_files = glob.glob("abstencao-d812a-firebase-adminsdk-*.json")
@@ -20,30 +20,24 @@ else:
     cred_dict = json.loads(cred_json)
 
 cred = credentials.Certificate(cred_dict)
-
 initialize_app(cred, {
     "databaseURL": "https://abstencao-d812a-default-rtdb.firebaseio.com/"
 })
 
-# Filtros (altere conforme desejado)
 eventoFiltro = ""  # Exemplo: "Evento X"
 turnoFiltro = ""   # Exemplo: "Manhã"
 escolaFiltro = ""  # Exemplo: "Escola Y"
 
 def ordenarSalasTurno(salas):
-    # Ordena salas numericamente pelo número
     def sala_num(sala):
         s = str(sala.get("sala", ""))
-        nums = ''.join([c for c in s if c.isdigit()])
-        return int(nums) if nums else 0
-    # Se quiser ordem alfabética secundária, pode adicionar s como segundo critério
-    return sorted(salas, key=lambda sala: (sala_num(sala), str(sala.get("sala", ""))))
+        match = re.search(r'\d+', s)
+        return int(match.group()) if match else 0
+    return sorted(salas, key=lambda sala: (sala_num(sala), sala.get("sala", "")))
 
 def coletar_dados_firebase():
     ref = db.reference('relatorio_por_evento')
     dados_firebase = ref.get() or {}
-    print("DEBUG - dados_firebase:", dados_firebase)
-
     dados = []
     for evento, evento_data in dados_firebase.items():
         turnos = evento_data.get('turnos', {})
@@ -81,7 +75,6 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
          "Eliminados", "Inscrição_Eliminado", "Motivo_Eliminado", "% Abstenção"]
     ]
 
-    # AGRUPAR POR EVENTO + ESCOLA
     escolas = {}
     totalGeral = dict(total=0, ausentes=0, presentes=0, desistentes=0, eliminados=0)
     for sala in exportarSalas:
@@ -93,10 +86,10 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
         totalGeral["desistentes"] += int(sala.get("desistentes", 0))
         totalGeral["eliminados"] += int(sala.get("eliminados", 0))
 
-    # Ordena blocos por evento e escola
-    for (evento_nome, escola_nome), salas in sorted(escolas.items(), key=lambda x: (x[0][0], x[0][1])):
+    for (evento_nome, escola_nome), salas in sorted(escolas.items(), key=lambda x: (str(x[0][0]), str(x[0][1]))):
         escTotal = escAusentes = escPresentes = escDesistentes = escEliminados = 0
         salasOrdenadas = ordenarSalasTurno(salas)
+        print(f"Evento: {evento_nome} | Escola: {escola_nome} | Salas: {[s['sala'] for s in salasOrdenadas]}")
         for sala in salasOrdenadas:
             maxCount = max(
                 len(sala.get("desistentesDetalhes", []) or []),
