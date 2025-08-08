@@ -66,6 +66,15 @@ async function verificarCoordNoDatabase(uid) {
     return false;
   }
 }
+// Função para carregar motivos do Firebase ao iniciar a aplicação
+function carregarMotivosDoFirebase() {
+  db.ref("motivos/desistentes").once("value").then(snapshot => {
+    motivosDesistentes = snapshot.val() || [];
+  });
+  db.ref("motivos/eliminados").once("value").then(snapshot => {
+    motivosEliminados = snapshot.val() || [];
+  });
+}
 
 auth.onAuthStateChanged(async (user) => {
   usuarioAtual = user;
@@ -74,6 +83,7 @@ auth.onAuthStateChanged(async (user) => {
     ehCoord = await verificarCoordNoDatabase(user.uid);
     atualizarStatusLogin();
     carregarEventosDoFirebase();
+    carregarMotivosDoFirebase(); // <-- Adicione esta linha!
 
     document.getElementById("loginBtn").disabled = true;
     document.getElementById("logoutBtn").style.display = "";
@@ -182,6 +192,48 @@ document.getElementById("filtroTurno").addEventListener("change", () => carregar
 document.getElementById("filtroEscola").addEventListener("change", () => carregarVisualSalas(dados));
 
 // ===== IMPORTAÇÃO DE MOTIVOS =====
+// Função para carregar motivos do Firebase ao iniciar a aplicação
+function carregarMotivosDoFirebase() {
+  db.ref("motivos/desistentes").once("value").then(snapshot => {
+    motivosDesistentes = snapshot.val() || [];
+  });
+  db.ref("motivos/eliminados").once("value").then(snapshot => {
+    motivosEliminados = snapshot.val() || [];
+  });
+}
+
+// Chame sempre após login bem-sucedido:
+auth.onAuthStateChanged(async (user) => {
+  usuarioAtual = user;
+  if (user) {
+    ehAdmin = await verificarAdminNoDatabase(user.uid);
+    ehCoord = await verificarCoordNoDatabase(user.uid);
+    atualizarStatusLogin();
+    carregarEventosDoFirebase();
+    carregarMotivosDoFirebase(); // <-- adiciona aqui
+    // ...
+  } else {
+    limparTelaAoDeslogar();
+  }
+});
+function limparUndefined(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(limparUndefined);
+  } else if (typeof obj === 'object' && obj !== null) {
+    const novo = {};
+    for (const k in obj) {
+      if (obj[k] === undefined) {
+        novo[k] = null; // ou "" se preferir string vazia
+      } else {
+        novo[k] = limparUndefined(obj[k]);
+      }
+    }
+    return novo;
+  } else {
+    return obj;
+  }
+}
+// Importação dos motivos via CSV (só aparece para admin)
 document.getElementById("motivosCsvFile").addEventListener("change", function (e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -192,13 +244,24 @@ document.getElementById("motivosCsvFile").addEventListener("change", function (e
       motivosDesistentes = [];
       motivosEliminados = [];
       results.data.forEach(row => {
-        if ((row.Tipo || "").toLowerCase() === "desistente") {
-          motivosDesistentes.push({ valor: row.Valor, descricao: row.Descricao });
-        } else if ((row.Tipo || "").toLowerCase() === "eliminado") {
-          motivosEliminados.push({ valor: row.Valor, descricao: row.Descricao });
+        const motivo = (row.Motivo || "").toLowerCase();
+        const item = row.Item || "";
+        const alinea = row["Alínea"] || row.Alinea || "";
+        const descricao = `Item ${item} - Alínea ${alinea}`;
+        if (motivo === "desistente") {
+          motivosDesistentes.push({ motivo, item, alinea, descricao });
+        } else if (motivo === "eliminado") {
+          motivosEliminados.push({ motivo, item, alinea, descricao });
         }
       });
-      exibirFeedback("Motivos importados com sucesso!");
+      // Se for admin, salva na nuvem!
+      if (ehAdmin) {
+        db.ref("motivos/desistentes").set(motivosDesistentes);
+        db.ref("motivos/eliminados").set(motivosEliminados);
+        exibirFeedback("Motivos importados e salvos na nuvem!");
+      } else {
+        exibirFeedback("Motivos importados localmente (apenas admin pode salvar na nuvem).");
+      }
     },
     error: function (err) {
       exibirFeedback("Erro ao importar motivos: " + err.message);
@@ -213,7 +276,9 @@ function abrirPopupMotivo(tipo, idx, detalhesArr, onUpdate) {
     exibirFeedback("Nenhum motivo importado para " + tipo + ".");
     return;
   }
-  const options = motivos.map(m => `<option value="${m.valor}">${m.descricao}</option>`).join("");
+  const options = motivos.map((m, i) => 
+    `<option value="${i}">${m.descricao}</option>`
+  ).join("");
   const modal = document.createElement('div');
   modal.id = "popupMotivo";
   modal.style = `
@@ -231,19 +296,25 @@ function abrirPopupMotivo(tipo, idx, detalhesArr, onUpdate) {
   `;
   document.body.appendChild(modal);
 
-  if (detalhesArr[idx]?.valor) {
-    document.getElementById("motivoSelect").value = detalhesArr[idx].valor;
+  // Seleciona o motivo já existente, se houver
+  if (typeof detalhesArr[idx]?.motivo !== 'undefined') {
+    const indexSelecionado = motivos.findIndex(m => m.descricao === detalhesArr[idx].motivo);
+    if (indexSelecionado >= 0) document.getElementById("motivoSelect").value = indexSelecionado;
   }
 
   document.getElementById("confirmMotivoBtn").onclick = function() {
     const select = document.getElementById("motivoSelect");
-    const valor = select.value;
-    const descricao = motivos.find(m => m.valor == valor)?.descricao;
-    detalhesArr[idx] = { valor, descricao, inscricao: detalhesArr[idx]?.inscricao || "" };
+    const motivoIndex = parseInt(select.value);
+    const motivo = motivos[motivoIndex];
+    detalhesArr[idx] = {
+      inscricao: detalhesArr[idx]?.inscricao || "",
+      descricao: motivo.descricao, // <-- aqui!
+      motivo: motivo.descricao,
+      valor: motivo.valor || "",
+      item: motivo.item || "",
+      alinea: motivo.alinea || ""
+    };
     onUpdate();
-    modal.remove();
-  };
-  document.getElementById("cancelMotivoBtn").onclick = function() {
     modal.remove();
   };
 }
@@ -388,6 +459,7 @@ function carregarVisualSalas(dadosArray) {
     container.appendChild(criarCardSala(sala, idx));
   });
   calcularETotalizar();
+  desenharResumoEvento();
 }
 
 // CARD BONITO DE SALA
@@ -447,45 +519,65 @@ function criarCardSala(sala, idx) {
   card.appendChild(detalhesDiv);
 
   // Função para desenhar campos de inscrição + motivo
-  function desenharDetalhes() {
-    detalhesDiv.innerHTML = "";
-    // Desistentes
-    for (let i = 0; i < (sala.desistentes || 0); i++) {
-      sala.desistentesDetalhes[i] = sala.desistentesDetalhes[i] || {};
-      const inscInput = document.createElement("input");
-      inscInput.type = "text";
-      inscInput.placeholder = `Inscrição Desistente ${i+1}`;
-      inscInput.value = sala.desistentesDetalhes[i]?.inscricao || "";
-      inscInput.oninput = () => {
-        sala.desistentesDetalhes[i].inscricao = inscInput.value;
-      };
-      const motivoBtn = document.createElement("button");
+function desenharDetalhes() {
+  detalhesDiv.innerHTML = "";
+  // Desistentes
+  for (let i = 0; i < (sala.desistentes || 0); i++) {
+    sala.desistentesDetalhes[i] = sala.desistentesDetalhes[i] || {};
+    const inscInput = document.createElement("input");
+    inscInput.type = "text";
+    inscInput.placeholder = `Inscrição Desistente ${i+1}`;
+    inscInput.value = sala.desistentesDetalhes[i]?.inscricao || "";
+    inscInput.oninput = () => {
+      sala.desistentesDetalhes[i].inscricao = inscInput.value;
+    };
+
+    const motivoBtn = document.createElement("button");
+    motivoBtn.textContent = sala.desistentesDetalhes[i]?.descricao || "Selecionar motivo";
+
+    // NOVO: campo ao lado mostrando motivo escolhido
+    const motivoSpan = document.createElement("span");
+    motivoSpan.style = "margin-left:8px; color:#1a237e; font-weight:bold;";
+    motivoSpan.textContent = sala.desistentesDetalhes[i]?.descricao || "";
+
+    motivoBtn.onclick = () => abrirPopupMotivo("desistente", i, sala.desistentesDetalhes, () => {
       motivoBtn.textContent = sala.desistentesDetalhes[i]?.descricao || "Selecionar motivo";
-      motivoBtn.onclick = () => abrirPopupMotivo("desistente", i, sala.desistentesDetalhes, () => {
-        motivoBtn.textContent = sala.desistentesDetalhes[i]?.descricao || "Selecionar motivo";
-      });
-      detalhesDiv.appendChild(inscInput);
-      detalhesDiv.appendChild(motivoBtn);
-    }
-    // Eliminados
-    for (let i = 0; i < (sala.eliminados || 0); i++) {
-      sala.eliminadosDetalhes[i] = sala.eliminadosDetalhes[i] || {};
-      const inscInput = document.createElement("input");
-      inscInput.type = "text";
-      inscInput.placeholder = `Inscrição Eliminado ${i+1}`;
-      inscInput.value = sala.eliminadosDetalhes[i]?.inscricao || "";
-      inscInput.oninput = () => {
-        sala.eliminadosDetalhes[i].inscricao = inscInput.value;
-      };
-      const motivoBtn = document.createElement("button");
-      motivoBtn.textContent = sala.eliminadosDetalhes[i]?.descricao || "Selecionar motivo";
-      motivoBtn.onclick = () => abrirPopupMotivo("eliminado", i, sala.eliminadosDetalhes, () => {
-        motivoBtn.textContent = sala.eliminadosDetalhes[i]?.descricao || "Selecionar motivo";
-      });
-      detalhesDiv.appendChild(inscInput);
-      detalhesDiv.appendChild(motivoBtn);
-    }
+      motivoSpan.textContent = sala.desistentesDetalhes[i]?.descricao || "";
+    });
+
+    detalhesDiv.appendChild(inscInput);
+    detalhesDiv.appendChild(motivoBtn);
+    detalhesDiv.appendChild(motivoSpan);
   }
+  // Eliminados
+  for (let i = 0; i < (sala.eliminados || 0); i++) {
+    sala.eliminadosDetalhes[i] = sala.eliminadosDetalhes[i] || { inscricao: "", descricao: "" };
+    const inscInput = document.createElement("input");
+    inscInput.type = "text";
+    inscInput.placeholder = `Inscrição Eliminado ${i+1}`;
+    inscInput.value = sala.eliminadosDetalhes[i]?.inscricao || "";
+    inscInput.oninput = () => {
+      sala.eliminadosDetalhes[i].inscricao = inscInput.value;
+    };
+
+    const motivoBtn = document.createElement("button");
+    motivoBtn.textContent = sala.eliminadosDetalhes[i]?.descricao || "Selecionar motivo";
+
+    // NOVO: campo ao lado mostrando motivo escolhido
+    const motivoSpan = document.createElement("span");
+    motivoSpan.style = "margin-left:8px; color:#b71c1c; font-weight:bold;";
+    motivoSpan.textContent = sala.eliminadosDetalhes[i]?.descricao || "";
+
+    motivoBtn.onclick = () => abrirPopupMotivo("eliminado", i, sala.eliminadosDetalhes, () => {
+      motivoBtn.textContent = sala.eliminadosDetalhes[i]?.descricao || "Selecionar motivo";
+      motivoSpan.textContent = sala.eliminadosDetalhes[i]?.descricao || "";
+    });
+
+    detalhesDiv.appendChild(inscInput);
+    detalhesDiv.appendChild(motivoBtn);
+    detalhesDiv.appendChild(motivoSpan);
+  }
+}
 
   // Atualiza campos dinâmicos ao mudar número de desistentes/eliminados
   camposGrid.querySelector(`#desistentes${idx}`).oninput = (e) => {
@@ -755,7 +847,7 @@ function salvarEscolaFiltradaNoFirebase() {
     const salaKey = sala.sala;
     promessas.push(
       db.ref(`relatorio_por_evento/${eventoKey}/turnos/${turnoKey}/escolas/${escolaKey}/salas/${salaKey}`)
-        .set(sala)
+        .set(limparUndefined(sala))
     );
   });
 
@@ -1035,4 +1127,164 @@ function corrigirEncoding(str) {
     }
   }
   return str;
+}
+
+function desenharDashboard() {
+  console.log("Dashboard chamado! Dados:", dados.length);
+
+  document.getElementById("dashboard-message").innerText = "Dashboard está ativo!";
+  document.getElementById("dashboard").style.display = "";
+
+  // Calcule os totais igual ao card
+  let total = 0, aus = 0, pres = 0, des = 0, elim = 0;
+  const eventoFiltro = document.getElementById("filtroEvento").value;
+  const turnoFiltro = document.getElementById("filtroTurno").value;
+  const escolaFiltro = document.getElementById("filtroEscola").value;
+  const dadosFiltrados = dados.filter(sala =>
+    (eventoFiltro === "" || sala.evento === eventoFiltro) &&
+    (turnoFiltro === "" || sala.turno === turnoFiltro) &&
+    (escolaFiltro === "" || sala.escola === escolaFiltro)
+  );
+
+  dadosFiltrados.forEach(sala => {
+    total += parseInt(sala.total) || 0;
+    aus += parseInt(sala.ausentes) || 0;
+    pres += parseInt(sala.presentes) || 0;
+    des += parseInt(sala.desistentes) || 0;
+    elim += parseInt(sala.eliminados) || 0;
+  });
+
+  // Remova gráficos anteriores se existirem
+  if (window.graficoTotais && typeof window.graficoTotais.destroy === "function") {
+    window.graficoTotais.destroy();
+  }
+
+  // Só desenha o gráfico se houver dados
+  if (total > 0) {
+    const ctxTotais = document.getElementById('graficoTotais').getContext('2d');
+    window.graficoTotais = new Chart(ctxTotais, {
+      type: 'pie',
+      data: {
+        labels: ['Ausentes', 'Presentes', 'Desistentes', 'Eliminados'],
+        datasets: [{
+          data: [aus, pres, des, elim],
+          backgroundColor: [
+            '#1976d2', // Ausentes
+            '#43a047', // Presentes
+            '#ffb300', // Desistentes
+            '#d32f2f'  // Eliminados
+          ]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {display: true, position: 'bottom'},
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.raw || 0;
+                const perc = total ? ((value / total) * 100).toFixed(2) : "0.00";
+                return `${label}: ${value} (${perc}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  } else {
+    // Se não houver dados, limpa o canvas
+    document.getElementById('graficoTotais').getContext('2d').clearRect(0, 0, 320, 200);
+  }
+
+  // ... resto do seu código para outros gráficos ...
+}
+function desenharResumoEvento() {
+  let total = 0, aus = 0, pres = 0, des = 0, elim = 0;
+  const eventoFiltro = document.getElementById("filtroEvento").value;
+  const turnoFiltro = document.getElementById("filtroTurno").value;
+  const escolaFiltro = document.getElementById("filtroEscola").value;
+  const dadosFiltrados = dados.filter(sala =>
+    (eventoFiltro === "" || sala.evento === eventoFiltro) &&
+    (turnoFiltro === "" || sala.turno === turnoFiltro) &&
+    (escolaFiltro === "" || sala.escola === escolaFiltro)
+  );
+
+  dadosFiltrados.forEach(sala => {
+    total += parseInt(sala.total) || 0;
+    aus += parseInt(sala.ausentes) || 0;
+    pres += parseInt(sala.presentes) || 0;
+    des += parseInt(sala.desistentes) || 0;
+    elim += parseInt(sala.eliminados) || 0;
+  });
+
+  // --- GRÁFICO DE PIZZA ---
+  if (window.graficoTotais && typeof window.graficoTotais.destroy === "function") {
+    window.graficoTotais.destroy();
+  }
+  if (total > 0) {
+    const ctxTotais = document.getElementById('graficoTotais').getContext('2d');
+    window.graficoTotais = new Chart(ctxTotais, {
+      type: 'pie',
+      data: {
+        labels: ['Ausentes', 'Presentes', 'Desistentes', 'Eliminados'],
+        datasets: [{
+          data: [aus, pres, des, elim],
+          backgroundColor: [
+            '#1976d2',
+            '#43a047',
+            '#ffb300',
+            '#d32f2f'
+          ]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {display: true, position: 'bottom'},
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.raw || 0;
+                const perc = total ? ((value / total) * 100).toFixed(2) : "0.00";
+                return `${label}: ${value} (${perc}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  } else {
+    document.getElementById('graficoTotais').getContext('2d').clearRect(0, 0, 150, 150);
+  }
+
+  // --- GRÁFICO DE BARRA ---
+  if (window.graficoBarraTotais && typeof window.graficoBarraTotais.destroy === "function") {
+    window.graficoBarraTotais.destroy();
+  }
+  if (total > 0) {
+    const ctxBarra = document.getElementById('graficoBarraTotais').getContext('2d');
+    window.graficoBarraTotais = new Chart(ctxBarra, {
+      type: 'bar',
+      data: {
+        labels: ['Ausentes', 'Presentes', 'Desistentes', 'Eliminados'],
+        datasets: [{
+          label: 'Total',
+          data: [aus, pres, des, elim],
+          backgroundColor: [
+            '#1976d2',
+            '#43a047',
+            '#ffb300',
+            '#d32f2f'
+          ]
+        }]
+      },
+      options: {
+        plugins: {legend: {display: false}},
+        scales: {y: {beginAtZero: true}}
+      }
+    });
+  } else {
+    document.getElementById('graficoBarraTotais').getContext('2d').clearRect(0, 0, 150, 150);
+  }
 }
