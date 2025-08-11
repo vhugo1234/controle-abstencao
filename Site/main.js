@@ -415,11 +415,16 @@ function carregarEventoFiltradoDoFirebase() {
         }
       });
     }
+
     montarFiltrosEDados(salas);
+    // 🔹 Reaplica o valor escolhido
+    document.getElementById("filtroEvento").value = eventoFiltro;
+
     carregarVisualSalas(dados);
     exibirFeedback("Evento carregado!");
   });
 }
+
 
 // ===== SÓ CARDS DAS SALAS =====
 function carregarVisualSalas(dadosArray) {
@@ -803,14 +808,20 @@ document.getElementById("salvarBtn").onclick = function() {
 };
 document.getElementById("exportBtn").onclick = function() {
   sincronizarDadosComInputs();
-  const evento = document.getElementById("filtroEvento").value;
-  const turno = document.getElementById("filtroTurno").value;
-  const escola = document.getElementById("filtroEscola").value;
+
+  // pega o label selecionado e a chave normalizada para enviar ao backend
+  const eventoLabel = document.getElementById("filtroEvento").value || "";
+  const eventoKey = eventoLabel ? normalizarEvento(eventoLabel) : "";
+  const turno = document.getElementById("filtroTurno").value || "";
+  const escola = document.getElementById("filtroEscola").value || "";
   const formato = "xlsx";
-  // Para teste, tente primeiro só o formato:
-  // const url = `/exportar_relatorio?formato=${formato}`;
- const url = `https://controle-abstencao.onrender.com/exportar_relatorio?evento=${encodeURIComponent(evento)}&turno=${encodeURIComponent(turno)}&escola=${encodeURIComponent(escola)}&formato=${formato}`;
- window.location.href = url;
+
+  // DEBUG: log antes de redirecionar (abra o Console do navegador para ver)
+  console.log("Exportando — eventoLabel:", eventoLabel, "eventoKey:", eventoKey, "turno:", turno, "escola:", escola);
+
+  // envia a chave normalizada (eventoKey) para o backend
+  const url = `https://controle-abstencao.onrender.com/exportar_relatorio?evento=${encodeURIComponent(eventoKey)}&turno=${encodeURIComponent(turno)}&escola=${encodeURIComponent(escola)}&formato=${formato}`;
+  window.location.href = url;
 };
 document.getElementById("limparBtn").onclick = limparFirebase;
 document.getElementById("salvarTodasBtn").onclick = function() {
