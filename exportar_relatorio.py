@@ -6,6 +6,8 @@ import os
 import json
 import glob
 import re
+import unicodedata
+import xlsxwriter
 
 # Configuração do Firebase
 cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
@@ -24,9 +26,17 @@ initialize_app(cred, {
     "databaseURL": "https://abstencao-d812a-default-rtdb.firebaseio.com/"
 })
 
-eventoFiltro = ""  # Exemplo: "Evento X"
+eventoFiltro = "Nome do Evento"
 turnoFiltro = ""   # Exemplo: "Manhã"
 escolaFiltro = ""  # Exemplo: "Escola Y"
+
+def normalizar_evento(nome):
+    return unicodedata.normalize('NFD', nome.strip().lower()) \
+        .encode('ascii', 'ignore').decode('utf-8') \
+        .replace(" ", "_")
+
+# Normaliza o evento para bater com as chaves do Firebase
+eventoFiltro = normalizar_evento(eventoFiltro) if eventoFiltro else ""
 
 def ordenarSalasTurno(salas):
     def sala_num(sala):
@@ -35,22 +45,25 @@ def ordenarSalasTurno(salas):
         return int(match.group()) if match else 0
     return sorted(salas, key=lambda sala: (sala_num(sala), sala.get("sala", "")))
 
-def coletar_dados_firebase():
+def coletar_dados_firebase(eventoFiltro=""):
     ref = db.reference('relatorio_por_evento')
     dados_firebase = ref.get() or {}
     dados = []
-    for evento, evento_data in dados_firebase.items():
+    for evento_key, evento_data in dados_firebase.items():
+        if eventoFiltro and evento_key != eventoFiltro:
+            continue
         turnos = evento_data.get('turnos', {})
-        for turno, turno_data in turnos.items():
+        for turno_key, turno_data in turnos.items():
             escolas = turno_data.get('escolas', {})
-            for escola, escola_data in escolas.items():
+            for escola_key, escola_data in escolas.items():
                 salas = escola_data.get('salas', {})
-                for sala_nome, sala_data in salas.items():
+                for sala_key, sala_data in salas.items():
                     dados.append({
-                        "evento": evento,
-                        "turno": turno,
-                        "escola": escola,
-                        "sala": sala_nome,
+                        "evento": sala_data.get("evento", evento_key),
+                        "evento_key": evento_key,  # ✅ salva a chave real do Firebase
+                        "turno": sala_data.get("turno", turno_key),
+                        "escola": sala_data.get("escola", escola_key),
+                        "sala": sala_data.get("sala", sala_key),
                         "total": sala_data.get('total', 0),
                         "ausentes": sala_data.get('ausentes', 0),
                         "presentes": sala_data.get('presentes', 0),
@@ -61,10 +74,12 @@ def coletar_dados_firebase():
                     })
     return dados
 
+
+
 def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
     exportarSalas = [
         sala for sala in dados
-        if (eventoFiltro == "" or sala.get("evento") == eventoFiltro)
+        if (eventoFiltro == "" or sala.get("evento_key") == eventoFiltro)
         and (turnoFiltro == "" or sala.get("turno") == turnoFiltro)
         and (escolaFiltro == "" or sala.get("escola") == escolaFiltro)
     ]
@@ -164,11 +179,86 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
 
     # Exporta para Excel
     df = pd.DataFrame(sheetData)
-    df.to_excel("relatorio_abstencao.xlsx", header=False, index=False)
-    print("XLSX exportado com sucesso!")
+    output_filename = "relatorio_abstencao.xlsx"
+    
+    # Cria um escritor de Excel usando o motor XlsxWriter
+    writer = pd.ExcelWriter(output_filename, engine='xlsxwriter')
+    
+    # Escreve o DataFrame no arquivo, mas pulamos o cabeçalho para escrevê-lo manualmente
+    df.to_excel(writer, sheet_name='Relatório de Abstenção', index=False, header=False)
+    
+    # Obtém os objetos workbook e worksheet do XlsxWriter para podermos formatá-los
+    workbook = writer.book
+    worksheet = writer.sheets['Relatório de Abstenção']
+    
+    # --- 1. DEFINIR OS ESTILOS DE CÉLULA ---
+    
+    # Estilo do Cabeçalho: Negrito, fundo cinza, borda e alinhamento central
+    header_format = workbook.add_format({
+        'bold': True,
+        'fg_color': '#D3D3D3', # Cinza claro
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter'
+    })
+    
+    # Estilo para as linhas de "TOTAL ESCOLA": Negrito, fundo azul claro e borda
+    total_escola_format = workbook.add_format({
+        'bold': True,
+        'fg_color': '#DDEBF7', # Azul bem claro
+        'border': 1
+    })
+    
+    # Estilo para a linha de "TOTAL GERAL": Negrito, fundo amarelo claro e borda
+    total_geral_format = workbook.add_format({
+        'bold': True,
+        'fg_color': '#FFF2CC', # Amarelo bem claro
+        'border': 1
+    })
 
-    # Exporta para PDF
+    # Estilo para centralizar o conteúdo de algumas colunas
+    center_format = workbook.add_format({'align': 'center'})
+
+    # --- 2. APLICAR OS ESTILOS E AJUSTES ---
+    
+    # Escrever o cabeçalho manualmente usando o nosso estilo
+    # (O DataFrame já foi escrito, então vamos sobrescrever a primeira linha)
+    for col_num, value in enumerate(df.columns):
+        worksheet.write(0, col_num, df.iloc[0, col_num], header_format)
+    
+    # Ajustar a largura das colunas para uma melhor visualização
+    worksheet.set_column('A:A', 30)  # Evento
+    worksheet.set_column('B:B', 15)  # Turno
+    worksheet.set_column('C:C', 35)  # Escola
+    worksheet.set_column('D:D', 10)  # Sala
+    worksheet.set_column('E:H', 12, center_format) # Total, Ausentes, Presentes, etc. (centralizado)
+    worksheet.set_column('I:J', 25)  # Detalhes Desistente
+    worksheet.set_column('K:M', 25)  # Detalhes Eliminado
+    worksheet.set_column('N:N', 15, center_format) # % Abstenção (centralizado)
+    
+    # Congelar o painel do cabeçalho para que ele fique sempre visível
+    worksheet.freeze_panes(1, 0)
+
+    # Aplicar os estilos de total nas linhas correspondentes
+    for row_num, row_data in enumerate(df.values):
+        # row_num + 1 porque a primeira linha (cabeçalho) é a linha 0
+        if isinstance(row_data[0], str):
+            if row_data[0].startswith("TOTAL ESCOLA"):
+                worksheet.set_row(row_num, None, total_escola_format)
+            elif row_data[0] == "TOTAL GERAL":
+                worksheet.set_row(row_num, None, total_geral_format)
+    
+    # Salvar o arquivo Excel com todas as formatações
+    writer.close()
+    
+    print("XLSX estilizado exportado com sucesso!")
+    
+    # --- FIM DA SEÇÃO DE EXPORTAÇÃO ESTILIZADA ---
+
+
+    # Exporta para PDF (seu código original de PDF pode continuar aqui)
     class PDF(FPDF):
+        # ... (código da classe PDF sem alterações) ...
         def header(self):
             self.set_font("Helvetica", "B", 12)
             self.cell(0, 10, "Relatório de Abstenção", border=0, ln=1, align="C")
@@ -196,5 +286,5 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
     print("PDF exportado com sucesso!")
 
 # Execução
-dados = coletar_dados_firebase()
+dados = coletar_dados_firebase(eventoFiltro)
 exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro)
