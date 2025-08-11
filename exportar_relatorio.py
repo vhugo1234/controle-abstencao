@@ -177,81 +177,94 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
         percGeral
     ])
 
-    # Exporta para Excel
-    df = pd.DataFrame(sheetData)
+    header = sheetData[0]
+    data_rows = sheetData[1:]
+    
+    # Criar um DataFrame apenas com as linhas de dados
+    df = pd.DataFrame(data_rows)
+    
+    # Definir o nome do arquivo de saída
     output_filename = "relatorio_abstencao.xlsx"
     
-    # Cria um escritor de Excel usando o motor XlsxWriter
+    # Criar um escritor de Excel usando o motor XlsxWriter
     writer = pd.ExcelWriter(output_filename, engine='xlsxwriter')
     
-    # Escreve o DataFrame no arquivo, mas pulamos o cabeçalho para escrevê-lo manualmente
-    df.to_excel(writer, sheet_name='Relatório de Abstenção', index=False, header=False)
+    # Enviar o DataFrame para o Excel, começando da segunda linha (startrow=1)
+    df.to_excel(writer, sheet_name='Relatório de Abstenção', index=False, header=False, startrow=1)
     
-    # Obtém os objetos workbook e worksheet do XlsxWriter para podermos formatá-los
+    # Obter os objetos workbook e worksheet
     workbook = writer.book
     worksheet = writer.sheets['Relatório de Abstenção']
     
     # --- 1. DEFINIR OS ESTILOS DE CÉLULA ---
     
-    # Estilo do Cabeçalho: Negrito, fundo cinza, borda e alinhamento central
+    # Estilo do Cabeçalho: Negrito, fundo cinza, bordas e alinhamento
     header_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#D3D3D3', # Cinza claro
-        'border': 1,
-        'align': 'center',
-        'valign': 'vcenter'
+        'bold': True, 'fg_color': '#D3D3D3', 'border': 1,
+        'align': 'center', 'valign': 'vcenter'
     })
     
-    # Estilo para as linhas de "TOTAL ESCOLA": Negrito, fundo azul claro e borda
+    # NOVO: Estilo padrão para todas as células de dados, com borda
+    default_format = workbook.add_format({'border': 1})
+    
+    # Estilo para as linhas de "TOTAL ESCOLA": Negrito, fundo azul, com borda
     total_escola_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#DDEBF7', # Azul bem claro
-        'border': 1
+        'bold': True, 'fg_color': '#DDEBF7', 'border': 1
     })
     
-    # Estilo para a linha de "TOTAL GERAL": Negrito, fundo amarelo claro e borda
+    # Estilo para a linha de "TOTAL GERAL": Negrito, fundo amarelo, com borda
     total_geral_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#FFF2CC', # Amarelo bem claro
-        'border': 1
+        'bold': True, 'fg_color': '#FFF2CC', 'border': 1
     })
 
-    # Estilo para centralizar o conteúdo de algumas colunas
-    center_format = workbook.add_format({'align': 'center'})
+    # Estilo para centralizar o conteúdo (agora também com borda)
+    center_format = workbook.add_format({'align': 'center', 'border': 1})
 
     # --- 2. APLICAR OS ESTILOS E AJUSTES ---
     
-    # Escrever o cabeçalho manualmente usando o nosso estilo
-    # (O DataFrame já foi escrito, então vamos sobrescrever a primeira linha)
-    for col_num, value in enumerate(df.columns):
-        worksheet.write(0, col_num, df.iloc[0, col_num], header_format)
+    # Escrever o cabeçalho na primeira linha (linha 0) com seu estilo
+    for col_num, value in enumerate(header):
+        worksheet.write(0, col_num, value, header_format)
     
-    # Ajustar a largura das colunas para uma melhor visualização
-    worksheet.set_column('A:A', 30)  # Evento
-    worksheet.set_column('B:B', 15)  # Turno
-    worksheet.set_column('C:C', 35)  # Escola
-    worksheet.set_column('D:D', 10)  # Sala
-    worksheet.set_column('E:H', 12, center_format) # Total, Ausentes, Presentes, etc. (centralizado)
-    worksheet.set_column('I:J', 25)  # Detalhes Desistente
-    worksheet.set_column('K:M', 25)  # Detalhes Eliminado
-    worksheet.set_column('N:N', 15, center_format) # % Abstenção (centralizado)
+    # Ajustar a largura das colunas
+    worksheet.set_column('A:A', 30); worksheet.set_column('B:B', 15); worksheet.set_column('C:C', 35)
+    worksheet.set_column('D:D', 10); worksheet.set_column('E:H', 12)
+    worksheet.set_column('I:J', 25); worksheet.set_column('K:M', 25); worksheet.set_column('N:N', 15)
     
-    # Congelar o painel do cabeçalho para que ele fique sempre visível
+    # Congelar o cabeçalho
     worksheet.freeze_panes(1, 0)
 
-    # Aplicar os estilos de total nas linhas correspondentes
-    for row_num, row_data in enumerate(df.values):
-        # row_num + 1 porque a primeira linha (cabeçalho) é a linha 0
+    # Aplicar os estilos de borda e total linha por linha
+    for row_num in range(len(data_rows)):
+        # O +1 é porque nossos dados começam na linha 1 da planilha
+        linha_real_planilha = row_num + 1
+        row_data = data_rows[row_num]
+        
+        # Define o formato base para a linha (com borda)
+        formato_da_linha = default_format
+        
+        # Verifica se é uma linha de total para usar um formato especial
         if isinstance(row_data[0], str):
             if row_data[0].startswith("TOTAL ESCOLA"):
-                worksheet.set_row(row_num, None, total_escola_format)
+                formato_da_linha = total_escola_format
             elif row_data[0] == "TOTAL GERAL":
-                worksheet.set_row(row_num, None, total_geral_format)
-    
+                formato_da_linha = total_geral_format
+
+        # Aplica o formato à linha inteira
+        worksheet.set_row(linha_real_planilha, 15, formato_da_linha)
+
+        # Sobrescreve a formatação de células específicas para centralizar o conteúdo
+        # Colunas E-H (índices 4-7) e N (índice 13)
+        for col_idx in [4, 5, 6, 7, 13]:
+            # Apenas para garantir, verificamos se a linha tem essa coluna
+            if col_idx < len(row_data):
+                cell_value = row_data[col_idx]
+                worksheet.write(linha_real_planilha, col_idx, cell_value, center_format)
+
     # Salvar o arquivo Excel com todas as formatações
     writer.close()
     
-    print("XLSX estilizado exportado com sucesso!")
+    print("XLSX estilizado e com bordas exportado com sucesso!")
     
     # --- FIM DA SEÇÃO DE EXPORTAÇÃO ESTILIZADA ---
 
