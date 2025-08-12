@@ -298,5 +298,6 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro, formato_
     print("PDF exportado com sucesso!")
 
 # Execução
-dados = coletar_dados_firebase(eventoFiltro)
-exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro)
+if __name__ == "__main__":
+    dados = coletar_dados_firebase(eventoFiltro)
+    exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro, "xlsx")  # ou "pdf"
