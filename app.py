@@ -15,7 +15,7 @@ def exportar_relatorio_endpoint():
 
     # Busca e exporta usando sua função
     dados = exportar_relatorio.coletar_dados_firebase()
-    exportar_relatorio.exportar_relatorios(dados, evento, turno, escola)
+    exportar_relatorio.exportar_relatorios(dados, evento, turno, escola, formato)
 
     # Envia o arquivo gerado
     arquivo = 'relatorio_abstencao.xlsx' if formato == 'xlsx' else 'relatorio_abstencao.pdf'
