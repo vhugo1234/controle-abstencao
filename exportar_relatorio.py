@@ -177,81 +177,92 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
         percGeral
     ])
 
-    # Exporta para Excel
-    df = pd.DataFrame(sheetData)
-    output_filename = "relatorio_abstencao.xlsx"
+    header = sheetData[0]
+    data_rows = sheetData[1:]
     
-    # Cria um escritor de Excel usando o motor XlsxWriter
+    # 2. Criar um DataFrame do pandas apenas com as linhas de dados
+    df = pd.DataFrame(data_rows)
+    
+    # 3. Definir o nome do arquivo e iniciar o escritor do Excel
+    output_filename = "relatorio_abstencao.xlsx"
     writer = pd.ExcelWriter(output_filename, engine='xlsxwriter')
     
-    # Escreve o DataFrame no arquivo, mas pulamos o cabeçalho para escrevê-lo manualmente
-    df.to_excel(writer, sheet_name='Relatório de Abstenção', index=False, header=False)
+    # 4. Escrever os dados na planilha
+    df.to_excel(writer, sheet_name='Relatório', index=False, header=False, startrow=1)
     
-    # Obtém os objetos workbook e worksheet do XlsxWriter para podermos formatá-los
+    # 5. Obter os objetos 'workbook' e 'worksheet' para formatação
     workbook = writer.book
-    worksheet = writer.sheets['Relatório de Abstenção']
+    worksheet = writer.sheets['Relatório']
     
-    # --- 1. DEFINIR OS ESTILOS DE CÉLULA ---
-    
-    # Estilo do Cabeçalho: Negrito, fundo cinza, borda e alinhamento central
+    # --- Definição dos Estilos ---
     header_format = workbook.add_format({
+        'bold': True, 'fg_color': '#D3D3D3', 'border': 1,
+        'align': 'center', 'valign': 'vcenter'
+    })
+    default_format = workbook.add_format({'border': 1, 'valign': 'vcenter'})
+    total_escola_format = workbook.add_format({
+        'bold': True, 'fg_color': '#DDEBF7', 'border': 1, 'valign': 'vcenter'
+    })
+    total_geral_format = workbook.add_format({
+        'bold': True, 'fg_color': '#FFF2CC', 'border': 1, 'valign': 'vcenter'
+    })
+    center_format = workbook.add_format({'align': 'center', 'border': 1, 'valign': 'vcenter'})
+    
+    # NOVO: Estilo para destacar linhas com alta abstenção
+    highlight_format = workbook.add_format({
         'bold': True,
-        'fg_color': '#D3D3D3', # Cinza claro
+        'fg_color': '#FFC7CE',  # Fundo vermelho claro
+        'font_color': '#9C0006', # Fonte vermelho escuro
         'border': 1,
-        'align': 'center',
         'valign': 'vcenter'
     })
-    
-    # Estilo para as linhas de "TOTAL ESCOLA": Negrito, fundo azul claro e borda
-    total_escola_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#DDEBF7', # Azul bem claro
-        'border': 1
-    })
-    
-    # Estilo para a linha de "TOTAL GERAL": Negrito, fundo amarelo claro e borda
-    total_geral_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#FFF2CC', # Amarelo bem claro
-        'border': 1
-    })
 
-    # Estilo para centralizar o conteúdo de algumas colunas
-    center_format = workbook.add_format({'align': 'center'})
-
-    # --- 2. APLICAR OS ESTILOS E AJUSTES ---
+    # --- Aplicação dos Estilos e Ajustes ---
     
-    # Escrever o cabeçalho manualmente usando o nosso estilo
-    # (O DataFrame já foi escrito, então vamos sobrescrever a primeira linha)
-    for col_num, value in enumerate(df.columns):
-        worksheet.write(0, col_num, df.iloc[0, col_num], header_format)
-    
-    # Ajustar a largura das colunas para uma melhor visualização
-    worksheet.set_column('A:A', 30)  # Evento
-    worksheet.set_column('B:B', 15)  # Turno
-    worksheet.set_column('C:C', 35)  # Escola
-    worksheet.set_column('D:D', 10)  # Sala
-    worksheet.set_column('E:H', 12, center_format) # Total, Ausentes, Presentes, etc. (centralizado)
-    worksheet.set_column('I:J', 25)  # Detalhes Desistente
-    worksheet.set_column('K:M', 25)  # Detalhes Eliminado
-    worksheet.set_column('N:N', 15, center_format) # % Abstenção (centralizado)
-    
-    # Congelar o painel do cabeçalho para que ele fique sempre visível
+    # 6. Escrever o cabeçalho e ajustar colunas/painéis (sem alteração aqui)
+    worksheet.write_row('A1', header, header_format)
+    worksheet.set_column('A:A', 30); worksheet.set_column('B:B', 15); worksheet.set_column('C:C', 35)
+    worksheet.set_column('D:D', 10); worksheet.set_column('E:H', 12)
+    worksheet.set_column('I:J', 25); worksheet.set_column('K:M', 25); worksheet.set_column('N:N', 15)
     worksheet.freeze_panes(1, 0)
 
-    # Aplicar os estilos de total nas linhas correspondentes
-    for row_num, row_data in enumerate(df.values):
-        # row_num + 1 porque a primeira linha (cabeçalho) é a linha 0
+    # 7. Aplicar os estilos de borda e total linha por linha (LÓGICA ATUALIZADA)
+    for row_num, row_data in enumerate(data_rows):
+        linha_planilha = row_num + 1
+        formato_da_linha = default_format
+
         if isinstance(row_data[0], str):
+            # LÓGICA DE FORMATAÇÃO CONDICIONAL AQUI
             if row_data[0].startswith("TOTAL ESCOLA"):
-                worksheet.set_row(row_num, None, total_escola_format)
+                # Por padrão, usamos o formato azul para total de escola
+                formato_da_linha = total_escola_format
+                try:
+                    # Pega o valor da abstenção (última coluna, índice 13)
+                    perc_str = row_data[13].replace('%', '').replace(',', '.')
+                    perc_float = float(perc_str)
+                    
+                    # Se a abstenção for maior que 20%, muda o formato para o de destaque
+                    if perc_float > 20.0:
+                        formato_da_linha = highlight_format
+                except (ValueError, IndexError):
+                    # Se houver erro na conversão (ex: célula vazia), ignora e mantém o formato padrão
+                    pass
+            
             elif row_data[0] == "TOTAL GERAL":
-                worksheet.set_row(row_num, None, total_geral_format)
-    
-    # Salvar o arquivo Excel com todas as formatações
+                formato_da_linha = total_geral_format
+
+        # Aplica o formato escolhido (padrão, total ou destaque) à linha inteira
+        worksheet.set_row(linha_planilha, 15, formato_da_linha)
+
+        # Re-aplica a centralização nas colunas numéricas
+        for col_idx in [4, 5, 6, 7, 13]:
+            if col_idx < len(row_data):
+                worksheet.write(linha_planilha, col_idx, row_data[col_idx], center_format)
+
+    # 8. Salvar o arquivo
     writer.close()
     
-    print("XLSX estilizado exportado com sucesso!")
+    print("Arquivo Excel com formatação condicional foi gerado com sucesso!")
     
     # --- FIM DA SEÇÃO DE EXPORTAÇÃO ESTILIZADA ---
 
