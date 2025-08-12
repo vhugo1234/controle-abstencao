@@ -66,6 +66,8 @@ def coletar_dados_firebase(eventoFiltro=""):
                 else:
                     sala_iter = []
                 for sala_key, sala_data in sala_iter:
+                    if sala_data is None:
+                        continue  # PULA buracos/lugares vazios na lista
                     dados.append({
                         "evento": sala_data.get("evento", evento_key),
                         "evento_key": evento_key,
@@ -81,8 +83,6 @@ def coletar_dados_firebase(eventoFiltro=""):
                         "eliminadosDetalhes": sala_data.get('eliminadosDetalhes', [])
                     })
     return dados
-
-
 
 def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro, formato_desejado): # <-- Adicionado 'formato_desejado'
     exportarSalas = [
