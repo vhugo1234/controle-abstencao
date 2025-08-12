@@ -920,25 +920,41 @@ function limparFirebase() {
     exibirFeedback("Apenas o administrador pode limpar todos os dados.");
     return;
   }
-  db.ref('relatorio_por_evento').once('value', snapshot => {
-    if (!snapshot.exists()) {
-      exibirFeedback("Não há dados para limpar!");
-      return;
-    }
-    db.ref('relatorio_por_evento').remove()
-      .then(() => {
-        limparCampos();
-        document.getElementById("eventos").innerHTML = "";
-        document.getElementById("totais").innerHTML = "";
-        exibirFeedback("Dados do evento limpos! (Admin)");
-        registrarAcao("limpar");
-        // Se quiser recarregar a tela, chame carregarEventosDoFirebase();
-      })
-      .catch(err => {
-        exibirFeedback("Erro ao limpar dados: " + err.message);
-        console.error("Erro ao tentar limpar Firebase:", err);
-      });
-  });
+
+  // Confirmação para evitar exclusão acidental
+  if (!confirm("Tem certeza que deseja apagar TODOS os dados de eventos E os motivos importados? Esta ação não pode ser desfeita.")) {
+    return;
+  }
+
+  // --- Lógica de exclusão atualizada ---
+  
+  // NOVO: Referência para os dois locais que queremos apagar
+  const refRelatorios = db.ref('relatorio_por_evento');
+  const refMotivos = db.ref('motivos');
+
+  // Cria uma promessa para cada operação de remoção
+  const promessaRelatorios = refRelatorios.remove();
+  const promessaMotivos = refMotivos.remove();
+  
+  // Executa as duas remoções em paralelo
+  Promise.all([promessaRelatorios, promessaMotivos])
+    .then(() => {
+      // Limpa os dados da tela e da memória local
+      limparCampos();
+      document.getElementById("eventos").innerHTML = "";
+      document.getElementById("totais").innerHTML = "";
+
+      // Limpa também as variáveis locais de motivos
+      motivosDesistentes = [];
+      motivosEliminados = [];
+      
+      exibirFeedback("Todos os dados de eventos e motivos foram limpos! (Admin)");
+      registrarAcao("limpar_geral");
+    })
+    .catch(err => {
+      exibirFeedback("Erro ao limpar dados: " + err.message);
+      console.error("Erro ao tentar limpar Firebase:", err);
+    });
 }
 // ===== HISTÓRICO DE AÇÕES =====
 function registrarAcao(tipo) {
