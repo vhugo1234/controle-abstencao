@@ -8,6 +8,7 @@ import glob
 import re
 import unicodedata
 import xlsxwriter
+import io
 
 # Configuração do Firebase
 cred_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
@@ -57,10 +58,17 @@ def coletar_dados_firebase(eventoFiltro=""):
             escolas = turno_data.get('escolas', {})
             for escola_key, escola_data in escolas.items():
                 salas = escola_data.get('salas', {})
-                for sala_key, sala_data in salas.items():
+                # SUPORTE A LIST OU DICT:
+                if isinstance(salas, dict):
+                    sala_iter = salas.items()
+                elif isinstance(salas, list):
+                    sala_iter = enumerate(salas)
+                else:
+                    sala_iter = []
+                for sala_key, sala_data in sala_iter:
                     dados.append({
                         "evento": sala_data.get("evento", evento_key),
-                        "evento_key": evento_key,  # ✅ salva a chave real do Firebase
+                        "evento_key": evento_key,
                         "turno": sala_data.get("turno", turno_key),
                         "escola": sala_data.get("escola", escola_key),
                         "sala": sala_data.get("sala", sala_key),
@@ -76,7 +84,7 @@ def coletar_dados_firebase(eventoFiltro=""):
 
 
 
-def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
+def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro, formato_desejado): # <-- Adicionado 'formato_desejado'
     exportarSalas = [
         sala for sala in dados
         if (eventoFiltro == "" or sala.get("evento_key") == eventoFiltro)
@@ -176,6 +184,10 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
         "",
         percGeral
     ])
+
+    if formato_desejado == 'xlsx':
+        output = io.BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
 
     # Exporta para Excel
     df = pd.DataFrame(sheetData)
