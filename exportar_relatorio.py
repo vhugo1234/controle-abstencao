@@ -177,81 +177,75 @@ def exportar_relatorios(dados, eventoFiltro, turnoFiltro, escolaFiltro):
         percGeral
     ])
 
-    # Exporta para Excel
+    # 1. Criar o DataFrame com o sheetData completo, como você pediu.
     df = pd.DataFrame(sheetData)
-    output_filename = "relatorio_abstencao.xlsx"
     
-    # Cria um escritor de Excel usando o motor XlsxWriter
+    output_filename = "relatorio_abstencao.xlsx"
     writer = pd.ExcelWriter(output_filename, engine='xlsxwriter')
     
-    # Escreve o DataFrame no arquivo, mas pulamos o cabeçalho para escrevê-lo manualmente
-    df.to_excel(writer, sheet_name='Relatório de Abstenção', index=False, header=False)
+    # 2. Escrever o DataFrame inteiro na planilha, sem o cabeçalho do pandas.
+    # A primeira linha do sheetData (nosso cabeçalho) será tratada como uma linha de dados aqui.
+    df.to_excel(writer, sheet_name='Relatório', index=False, header=False)
     
-    # Obtém os objetos workbook e worksheet do XlsxWriter para podermos formatá-los
+    # 3. Obter os objetos workbook e worksheet para formatação
     workbook = writer.book
-    worksheet = writer.sheets['Relatório de Abstenção']
+    worksheet = writer.sheets['Relatório']
     
-    # --- 1. DEFINIR OS ESTILOS DE CÉLULA ---
-    
-    # Estilo do Cabeçalho: Negrito, fundo cinza, borda e alinhamento central
+    # --- Definição dos Estilos ---
     header_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#D3D3D3', # Cinza claro
-        'border': 1,
-        'align': 'center',
-        'valign': 'vcenter'
+        'bold': True, 'fg_color': '#D3D3D3', 'border': 1, 'align': 'center', 'valign': 'vcenter'
     })
-    
-    # Estilo para as linhas de "TOTAL ESCOLA": Negrito, fundo azul claro e borda
+    default_border_format = workbook.add_format({'border': 1}) # <-- Borda para todas as células
     total_escola_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#DDEBF7', # Azul bem claro
-        'border': 1
+        'bold': True, 'fg_color': '#DDEBF7', 'border': 1
     })
-    
-    # Estilo para a linha de "TOTAL GERAL": Negrito, fundo amarelo claro e borda
     total_geral_format = workbook.add_format({
-        'bold': True,
-        'fg_color': '#FFF2CC', # Amarelo bem claro
-        'border': 1
+        'bold': True, 'fg_color': '#FFF2CC', 'border': 1
+    })
+    highlight_format = workbook.add_format({ # <-- Formato de destaque
+        'bold': True, 'fg_color': '#FFC7CE', 'font_color': '#9C0006', 'border': 1
     })
 
-    # Estilo para centralizar o conteúdo de algumas colunas
-    center_format = workbook.add_format({'align': 'center'})
-
-    # --- 2. APLICAR OS ESTILOS E AJUSTES ---
+    # --- Aplicação dos Estilos e Ajustes ---
     
-    # Escrever o cabeçalho manualmente usando o nosso estilo
-    # (O DataFrame já foi escrito, então vamos sobrescrever a primeira linha)
+    # 4. Escrever e formatar o cabeçalho (sobrescrevendo a primeira linha já escrita)
     for col_num, value in enumerate(df.columns):
         worksheet.write(0, col_num, df.iloc[0, col_num], header_format)
-    
-    # Ajustar a largura das colunas para uma melhor visualização
-    worksheet.set_column('A:A', 30)  # Evento
-    worksheet.set_column('B:B', 15)  # Turno
-    worksheet.set_column('C:C', 35)  # Escola
-    worksheet.set_column('D:D', 10)  # Sala
-    worksheet.set_column('E:H', 12, center_format) # Total, Ausentes, Presentes, etc. (centralizado)
-    worksheet.set_column('I:J', 25)  # Detalhes Desistente
-    worksheet.set_column('K:M', 25)  # Detalhes Eliminado
-    worksheet.set_column('N:N', 15, center_format) # % Abstenção (centralizado)
-    
-    # Congelar o painel do cabeçalho para que ele fique sempre visível
+
+    # 5. Ajustar colunas e congelar painel
+    worksheet.set_column('A:N', 15) # Define uma largura padrão inicial
+    worksheet.set_column('A:A', 30); worksheet.set_column('C:C', 35) 
+    worksheet.set_column('I:J', 25); worksheet.set_column('K:M', 25)
     worksheet.freeze_panes(1, 0)
 
-    # Aplicar os estilos de total nas linhas correspondentes
-    for row_num, row_data in enumerate(df.values):
-        # row_num + 1 porque a primeira linha (cabeçalho) é a linha 0
+    # 6. Aplicar bordas, cores e formatação condicional
+    # Começamos do 1 para pular o cabeçalho que já formatamos
+    for row_num in range(1, len(df)):
+        # Aplica a borda padrão em todas as células da linha
+        worksheet.set_row(row_num, None, default_border_format)
+        
+        row_data = df.iloc[row_num].values
         if isinstance(row_data[0], str):
+            
+            # Lógica para TOTAL ESCOLA (com formatação condicional)
             if row_data[0].startswith("TOTAL ESCOLA"):
-                worksheet.set_row(row_num, None, total_escola_format)
+                formato_escolhido = total_escola_format # Formato padrão azul
+                try:
+                    perc_str = str(row_data[13]).replace('%', '').replace(',', '.')
+                    if float(perc_str) > 20.0:
+                        formato_escolhido = highlight_format # Muda para o formato vermelho se > 20%
+                except (ValueError, IndexError):
+                    pass
+                worksheet.set_row(row_num, None, formato_escolhido)
+
+            # Lógica para TOTAL GERAL
             elif row_data[0] == "TOTAL GERAL":
                 worksheet.set_row(row_num, None, total_geral_format)
-    
-    # Salvar o arquivo Excel com todas as formatações
+                
+    # 7. Salvar o arquivo
     writer.close()
     
-    print("XLSX estilizado exportado com sucesso!")
+    print("Arquivo Excel final estilizado com sucesso!")
     
     # --- FIM DA SEÇÃO DE EXPORTAÇÃO ESTILIZADA ---
 
